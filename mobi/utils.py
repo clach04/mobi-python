@@ -12,6 +12,23 @@ import os
 import unittest
 
 
+class LazyContents:
+    """ read contents without loading the whole file in memory """
+    def __init__(self, file):
+        self.f = file
+
+    def __getitem__(self, target):
+        if type(target) is slice:
+            assert target.step == None, "step %d not implemented" % target.step
+            start = target.start
+            length = target.stop - start
+        else:
+            start = int(target)
+            length = 1
+        self.f.seek(start)
+        return self.f.read(length)
+
+
 def toDict(tuples):
   resultsDict = {}
   for field, value in tuples:

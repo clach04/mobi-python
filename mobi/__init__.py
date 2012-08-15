@@ -15,10 +15,12 @@ from pprint import pprint
 import utils
 from lz77 import uncompress_lz77
 
+
 class Mobi:
   def parse(self):
     """ reads in the file, then parses record tables"""
-    self.contents = self.f.read();
+    #self.contents = self.f.read();
+    self.contents = utils.LazyContents(self.f);
     self.header = self.parseHeader();
     self.records = self.parseRecordInfoList();
     self.readRecord0()
