@@ -19,7 +19,6 @@ from lz77 import uncompress_lz77
 class Mobi:
   def parse(self):
     """ reads in the file, then parses record tables"""
-    #self.contents = self.f.read();
     self.contents = utils.LazyContents(self.f);
     self.header = self.parseHeader();
     self.records = self.parseRecordInfoList();
@@ -54,7 +53,7 @@ class Mobi:
         self.f = open(filename, "rb");
       else:
         self.f = filename;
-    except IOError,e:
+    except IOError as e:
       sys.stderr.write("Could not open %s! " % filename);
       raise e;
     self.offset = 0;
