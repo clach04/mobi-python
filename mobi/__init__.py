@@ -9,10 +9,8 @@ Copyright (c) 2009 Elliot Kroo. All rights reserved.
 from __future__ import absolute_import
 
 import sys
-import unittest
 
 from struct import calcsize, unpack
-from pprint import pprint
 
 from .lz77 import uncompress_lz77
 from . import utils
@@ -47,7 +45,7 @@ class Mobi:
         "Returns the title of the book"
         return self.config['mobi']['Full Name']
 
-###########  Private API ###########################
+# ##########  Private API ###########################
 
     def __init__(self, filename):
         try:
@@ -62,7 +60,7 @@ class Mobi:
 
     def __iter__(self):
         if not self.config:
-          return
+            return
 
         for record in range(1, self.config['mobi']['First Non-book index'] - 1):
             yield self.readRecord(record)
@@ -94,7 +92,7 @@ class Mobi:
             # store into the records dict
             records[resultsDict['UniqueID']] = resultsDict
 
-        return records;
+        return records
 
     def parseHeader(self):
         headerfmt = '>32shhIIIIII4s4sIIH'
@@ -136,8 +134,8 @@ class Mobi:
 
         self.config = {
             'palmdoc': palmdocHeader,
-            'mobi' : MobiHeader,
-            'exth' : exthHeader
+            'mobi': MobiHeader,
+            'exth': exthHeader
         }
 
     def parseEXTHHeader(self):
