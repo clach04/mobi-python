@@ -6,7 +6,7 @@ test: venv
 lint: venv
 	venv/bin/flake8 mobi
 
-venv:
+venv: requirements.txt
 	virtualenv -p python venv
-	venv/bin/pip install flake8
+	venv/bin/pip install -r requirements.txt
 

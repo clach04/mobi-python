@@ -15,7 +15,7 @@ class MobiTests(unittest.TestCase):
 
     def test_read(self):
         self.mobitest.parse()
-        content = ""
+        content = b''
         for i in range(1, 5):
             content += self.mobitest.readRecord(i)
 
@@ -23,13 +23,12 @@ class MobiTests(unittest.TestCase):
         self.mobitest.parse()
         pprint(self.mobitest.records)
         for record in range(4):
-            f = open("imagerecord%d.jpg" % record, 'w')
-            f.write(self.mobitest.readImageRecord(record))
-            f.close()
+            with open("imagerecord%d.jpg" % record, 'wb') as f:
+                f.write(self.mobitest.readImageRecord(record))
 
     def test_author_title(self):
         self.mobitest.parse()
-        self.assertEqual(self.mobitest.author(), 'Charles Darwin')
+        self.assertEqual('Charles Darwin', self.mobitest.author())
         self.assertEqual(
             self.mobitest.title(),
             'The Origin of Species by means of Natural Selection, 6th Edition')

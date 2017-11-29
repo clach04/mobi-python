@@ -39,11 +39,11 @@ class Mobi:
 
     def author(self):
         "Returns the author of the book"
-        return self.config['exth']['records'][100]
+        return self.config['exth']['records'][100].decode('utf8')
 
     def title(self):
         "Returns the title of the book"
-        return self.config['mobi']['Full Name']
+        return self.config['mobi']['Full Name'].decode('utf8')
 
 # ##########  Private API ###########################
 
@@ -236,9 +236,9 @@ class Mobi:
         self.offset += resultsDict['header length']
 
         def onebits(x, width=16):
-            return len(filter(lambda x: x == "1",
-                              (str((x >> i) & 1)
-                               for i in range(width - 1, -1, -1))))
+            return len(list(filter(lambda x: x == "1",
+                                   (str((x >> i) & 1)
+                                    for i in range(width - 1, -1, -1)))))
 
         resultsDict['extra bytes'] = \
             2 * onebits(unpack(">H", self.contents[self.offset-2:self.offset])[0]

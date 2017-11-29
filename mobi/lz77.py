@@ -1,6 +1,13 @@
-import struct
 # ported directly from the PalmDoc Perl library
 # http://kobesearch.cpan.org/htdocs/EBook-Tools/EBook/Tools/PalmDoc.pm.html
+
+import struct
+
+from six import PY3
+
+
+def bytesord(v):
+    return v if PY3 else ord(v)
 
 
 def uncompress_lz77(data):
@@ -12,7 +19,7 @@ def uncompress_lz77(data):
     # lz77offset;     # LZ77 offset
     # lz77length;     # LZ77 length
     # lz77pos;        # Position inside $lz77length
-    text = ''       # Output (uncompressed) text
+    text = b''       # Output (uncompressed) text
     # textlength;     # Length of uncompressed text during LZ77 pass
     # textpos;        # Position inside $text during LZ77 pass
 
@@ -20,7 +27,7 @@ def uncompress_lz77(data):
         # char = substr($data,$offset++,1);
         char = data[offset]
         offset += 1
-        ord_ = ord(char)
+        ord_ = bytesord(char)
 
         # print " ".join([repr(char), hex(ord_)])
 
@@ -36,7 +43,7 @@ def uncompress_lz77(data):
             offset += ord_
         elif (ord_ <= 0x7f):
             # Values from 0x09 through 0x7f are literal
-            text += char
+            text += bytes(char)
         elif (ord_ <= 0xbf):
             # Data is LZ77-compressed
 
@@ -87,5 +94,5 @@ def uncompress_lz77(data):
         else:
             # 0xc0 - 0xff are single characters (XOR 0x80) preceded by
             # a space
-            text += ' ' + chr(ord_ ^ 0x80)
+            text += b' ' + bytes(ord_ ^ 0x80)
     return text
