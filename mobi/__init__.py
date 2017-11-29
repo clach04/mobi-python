@@ -6,36 +6,39 @@ Mobi.py
 Created by Elliot Kroo on 2009-12-25.
 Copyright (c) 2009 Elliot Kroo. All rights reserved.
 """
+from __future__ import absolute_import
 
 import sys
 import os
 import unittest
-from struct import *
+
+from struct import calcsize, unpack
 from pprint import pprint
-import utils
+
 from lz77 import uncompress_lz77
+import utils
 
 
 class Mobi:
   def parse(self):
     """ reads in the file, then parses record tables"""
-    self.contents = utils.LazyContents(self.f);
-    self.header = self.parseHeader();
-    self.records = self.parseRecordInfoList();
+    self.contents = utils.LazyContents(self.f)
+    self.header = self.parseHeader()
+    self.records = self.parseRecordInfoList()
     self.readRecord0()
 
   def readRecord(self, recordnum, disable_compression=False):
     if self.config:
       if self.config['palmdoc']['Compression'] == 1 or disable_compression:
-        return self.contents[self.records[recordnum]['record Data Offset']:self.records[recordnum+1]['record Data Offset']];
+        return self.contents[self.records[recordnum]['record Data Offset']:self.records[recordnum+1]['record Data Offset']]
       elif self.config['palmdoc']['Compression'] == 2:
         result = uncompress_lz77(self.contents[self.records[recordnum]['record Data Offset']:self.records[recordnum+1]['record Data Offset']-self.config['mobi']['extra bytes']])
         return result
 
   def readImageRecord(self, imgnum):
     if self.config:
-      recordnum = self.config['mobi']['First Image index'] + imgnum;
-      return self.readRecord(recordnum, disable_compression=True);
+      recordnum = self.config['mobi']['First Image index'] + imgnum
+      return self.readRecord(recordnum, disable_compression=True)
 
   def author(self):
     "Returns the author of the book"
@@ -50,21 +53,21 @@ class Mobi:
   def __init__(self, filename):
     try:
       if isinstance(filename, str):
-        self.f = open(filename, "rb");
+        self.f = open(filename, "rb")
       else:
         self.f = filename;
     except IOError as e:
-      sys.stderr.write("Could not open %s! " % filename);
+      sys.stderr.write("Could not open %s! " % filename)
       raise e;
     self.offset = 0;
 
   def __iter__(self):
     if not self.config: return;
     for record in range(1, self.config['mobi']['First Non-book index'] - 1):
-      yield self.readRecord(record);
+      yield self.readRecord(record)
 
   def parseRecordInfoList(self):
-    records = {};
+    records = {}
     # read in all records in info list
     for recordID in range(self.header['number of records']):
       headerfmt = '>II'
@@ -80,15 +83,15 @@ class Mobi:
       self.offset += headerlen
 
       # convert tuple to dictionary
-      resultsDict = utils.toDict(results);
+      resultsDict = utils.toDict(results)
 
       # futz around with the unique ID record, as the uniqueID's top 8 bytes are
       # really the "record attributes":
-      resultsDict['record Attributes'] = (resultsDict['UniqueID'] & 0xFF000000) >> 24;
-      resultsDict['UniqueID'] = resultsDict['UniqueID'] & 0x00FFFFFF;
+      resultsDict['record Attributes'] = (resultsDict['UniqueID'] & 0xFF000000) >> 24
+      resultsDict['UniqueID'] = resultsDict['UniqueID'] & 0x00FFFFFF
 
       # store into the records dict
-      records[resultsDict['UniqueID']] = resultsDict;
+      records[resultsDict['UniqueID']] = resultsDict
 
     return records;
 
@@ -119,16 +122,16 @@ class Mobi:
     self.offset += headerlen
 
     # convert tuple array to dictionary
-    resultsDict = utils.toDict(results);
+    resultsDict = utils.toDict(results)
 
     return resultsDict
 
   def readRecord0(self):
-    palmdocHeader = self.parsePalmDOCHeader();
-    MobiHeader = self.parseMobiHeader();
+    palmdocHeader = self.parsePalmDOCHeader()
+    MobiHeader = self.parseMobiHeader()
     exthHeader = None
     if MobiHeader['Has EXTH Header']:
-      exthHeader = self.parseEXTHHeader();
+      exthHeader = self.parseEXTHHeader()
 
     self.config = {
       'palmdoc': palmdocHeader,
@@ -150,17 +153,17 @@ class Mobi:
     results = zip(fields, unpack(headerfmt, self.contents[self.offset:self.offset+headerlen]))
 
     # convert tuple array to dictionary
-    resultsDict = utils.toDict(results);
+    resultsDict = utils.toDict(results)
 
-    self.offset += headerlen;
-    resultsDict['records'] = {};
+    self.offset += headerlen
+    resultsDict['records'] = {}
     for record in range(resultsDict['record Count']):
-      recordType, recordLen = unpack(">II", self.contents[self.offset:self.offset+8]);
-      recordData = self.contents[self.offset+8:self.offset+recordLen];
-      resultsDict['records'][recordType] = recordData;
-      self.offset += recordLen;
+      recordType, recordLen = unpack(">II", self.contents[self.offset:self.offset+8])
+      recordData = self.contents[self.offset+8:self.offset+recordLen]
+      resultsDict['records'][recordType] = recordData
+      self.offset += recordLen
 
-    return resultsDict;
+    return resultsDict
 
   def parseMobiHeader(self):
     headerfmt = '> IIII II 40s III IIIII IIII I 36s IIII 8s HHIIIII'
@@ -216,26 +219,26 @@ class Mobi:
     results = zip(fields, unpack(headerfmt, self.contents[self.offset:self.offset+headerlen]))
 
     # convert tuple array to dictionary
-    resultsDict = utils.toDict(results);
+    resultsDict = utils.toDict(results)
 
-    resultsDict['Start Offset'] = self.offset;
+    resultsDict['Start Offset'] = self.offset
 
     resultsDict['Full Name'] = (self.contents[
       self.records[0]['record Data Offset'] + resultsDict['Full Name Offset'] :
       self.records[0]['record Data Offset'] + resultsDict['Full Name Offset'] + resultsDict['Full Name Length']])
 
-    resultsDict['Has DRM'] = resultsDict['DRM Offset'] != 0xFFFFFFFF;
+    resultsDict['Has DRM'] = resultsDict['DRM Offset'] != 0xFFFFFFFF
 
-    resultsDict['Has EXTH Header'] = (resultsDict['EXTH flags'] & 0x40) != 0;
+    resultsDict['Has EXTH Header'] = (resultsDict['EXTH flags'] & 0x40) != 0
 
-    self.offset += resultsDict['header length'];
+    self.offset += resultsDict['header length']
 
     def onebits(x, width=16):
-        return len(filter(lambda x: x == "1", (str((x>>i)&1) for i in xrange(width-1,-1,-1))));
+        return len(filter(lambda x: x == "1", (str((x>>i)&1) for i in range(width-1,-1,-1))))
 
     resultsDict['extra bytes'] = 2*onebits(unpack(">H", self.contents[self.offset-2:self.offset])[0] & 0xFFFE)
 
-    return resultsDict;
+    return resultsDict
 
   def parsePalmDOCHeader(self):
     headerfmt = '>HHIHHHH'
@@ -249,33 +252,33 @@ class Mobi:
       "Encryption Type",
       "Unknown"
     ]
-    offset = self.records[0]['record Data Offset'];
+    offset = self.records[0]['record Data Offset']
     # create tuple with info
     results = zip(fields, unpack(headerfmt, self.contents[offset:offset+headerlen]))
 
     # convert tuple array to dictionary
-    resultsDict = utils.toDict(results);
+    resultsDict = utils.toDict(results)
 
-    self.offset = offset+headerlen;
+    self.offset = offset+headerlen
     return resultsDict
 
 class MobiTests(unittest.TestCase):
   def setUp(self):
-    self.mobitest = Mobi("../test/CharlesDarwin.mobi");
+    self.mobitest = Mobi("../test/CharlesDarwin.mobi")
   def testParse(self):
-    self.mobitest.parse();
+    self.mobitest.parse()
     pprint (self.mobitest.config)
   def testRead(self):
-    self.mobitest.parse();
+    self.mobitest.parse()
     content = ""
     for i in range(1,5):
-      content += self.mobitest.readRecord(i);
+      content += self.mobitest.readRecord(i)
   def testImage(self):
-    self.mobitest.parse();
-    pprint (self.mobitest.records);
+    self.mobitest.parse()
+    pprint (self.mobitest.records)
     for record in range(4):
       f = open("imagerecord%d.jpg" % record, 'w')
-      f.write(self.mobitest.readImageRecord(record));
+      f.write(self.mobitest.readImageRecord(record))
       f.close();
   def testAuthorTitle(self):
     self.mobitest.parse()
