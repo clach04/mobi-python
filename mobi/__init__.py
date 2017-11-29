@@ -19,244 +19,255 @@ from . import utils
 
 
 class Mobi:
-  def parse(self):
-    """ reads in the file, then parses record tables"""
-    self.contents = utils.LazyContents(self.f)
-    self.header = self.parseHeader()
-    self.records = self.parseRecordInfoList()
-    self.readRecord0()
+    def parse(self):
+        """ reads in the file, then parses record tables"""
+        self.contents = utils.LazyContents(self.f)
+        self.header = self.parseHeader()
+        self.records = self.parseRecordInfoList()
+        self.readRecord0()
 
-  def readRecord(self, recordnum, disable_compression=False):
-    if self.config:
-      if self.config['palmdoc']['Compression'] == 1 or disable_compression:
-        return self.contents[self.records[recordnum]['record Data Offset']:self.records[recordnum+1]['record Data Offset']]
-      elif self.config['palmdoc']['Compression'] == 2:
-        result = uncompress_lz77(self.contents[self.records[recordnum]['record Data Offset']:self.records[recordnum+1]['record Data Offset']-self.config['mobi']['extra bytes']])
-        return result
+    def readRecord(self, recordnum, disable_compression=False):
+        if self.config:
+            if self.config['palmdoc']['Compression'] == 1 or disable_compression:
+                return self.contents[self.records[recordnum]['record Data Offset']:self.records[recordnum+1]['record Data Offset']]
+            elif self.config['palmdoc']['Compression'] == 2:
+                result = uncompress_lz77(self.contents[self.records[recordnum]['record Data Offset']:self.records[recordnum+1]['record Data Offset']-self.config['mobi']['extra bytes']])
+                return result
 
-  def readImageRecord(self, imgnum):
-    if self.config:
-      recordnum = self.config['mobi']['First Image index'] + imgnum
-      return self.readRecord(recordnum, disable_compression=True)
+    def readImageRecord(self, imgnum):
+        if self.config:
+            recordnum = self.config['mobi']['First Image index'] + imgnum
+            return self.readRecord(recordnum, disable_compression=True)
 
-  def author(self):
-    "Returns the author of the book"
-    return self.config['exth']['records'][100]
+    def author(self):
+        "Returns the author of the book"
+        return self.config['exth']['records'][100]
 
-  def title(self):
-    "Returns the title of the book"
-    return self.config['mobi']['Full Name']
+    def title(self):
+        "Returns the title of the book"
+        return self.config['mobi']['Full Name']
 
 ###########  Private API ###########################
 
-  def __init__(self, filename):
-    try:
-      if isinstance(filename, str):
-        self.f = open(filename, "rb")
-      else:
-        self.f = filename;
-    except IOError as e:
-      sys.stderr.write("Could not open %s! " % filename)
-      raise e;
-    self.offset = 0;
+    def __init__(self, filename):
+        try:
+            if isinstance(filename, str):
+                self.f = open(filename, "rb")
+            else:
+                self.f = filename
+        except IOError as e:
+            sys.stderr.write("Could not open %s! " % filename)
+            raise e
+        self.offset = 0
 
-  def __iter__(self):
-    if not self.config: return;
-    for record in range(1, self.config['mobi']['First Non-book index'] - 1):
-      yield self.readRecord(record)
+    def __iter__(self):
+        if not self.config:
+          return
 
-  def parseRecordInfoList(self):
-    records = {}
-    # read in all records in info list
-    for recordID in range(self.header['number of records']):
-      headerfmt = '>II'
-      headerlen = calcsize(headerfmt)
-      fields = [
-        "record Data Offset",
-        "UniqueID",
-      ]
-      # create tuple with info
-      results = zip(fields, unpack(headerfmt, self.contents[self.offset:self.offset+headerlen]))
+        for record in range(1, self.config['mobi']['First Non-book index'] - 1):
+            yield self.readRecord(record)
 
-      # increment offset into file
-      self.offset += headerlen
+    def parseRecordInfoList(self):
+        records = {}
+        # read in all records in info list
+        for recordID in range(self.header['number of records']):
+            headerfmt = '>II'
+            headerlen = calcsize(headerfmt)
+            fields = [
+                "record Data Offset",
+                "UniqueID",
+            ]
+            # create tuple with info
+            results = zip(fields, unpack(headerfmt, self.contents[self.offset:self.offset+headerlen]))
 
-      # convert tuple to dictionary
-      resultsDict = utils.toDict(results)
+            # increment offset into file
+            self.offset += headerlen
 
-      # futz around with the unique ID record, as the uniqueID's top 8 bytes are
-      # really the "record attributes":
-      resultsDict['record Attributes'] = (resultsDict['UniqueID'] & 0xFF000000) >> 24
-      resultsDict['UniqueID'] = resultsDict['UniqueID'] & 0x00FFFFFF
+            # convert tuple to dictionary
+            resultsDict = utils.toDict(results)
 
-      # store into the records dict
-      records[resultsDict['UniqueID']] = resultsDict
+            # futz around with the unique ID record, as the uniqueID's top 8 bytes are
+            # really the "record attributes":
+            resultsDict['record Attributes'] = (resultsDict['UniqueID'] & 0xFF000000) >> 24
+            resultsDict['UniqueID'] = resultsDict['UniqueID'] & 0x00FFFFFF
 
-    return records;
+            # store into the records dict
+            records[resultsDict['UniqueID']] = resultsDict
 
-  def parseHeader(self):
-    headerfmt = '>32shhIIIIII4s4sIIH'
-    headerlen = calcsize(headerfmt)
-    fields = [
-      "name",
-      "attributes",
-      "version",
-      "created",
-      "modified",
-      "backup",
-      "modnum",
-      "appInfoId",
-      "sortInfoID",
-      "type",
-      "creator",
-      "uniqueIDseed",
-      "nextRecordListID",
-      "number of records"
-    ]
+        return records;
 
-    # unpack header, zip up into list of tuples
-    results = zip(fields, unpack(headerfmt, self.contents[self.offset:self.offset+headerlen]))
+    def parseHeader(self):
+        headerfmt = '>32shhIIIIII4s4sIIH'
+        headerlen = calcsize(headerfmt)
+        fields = [
+            "name",
+            "attributes",
+            "version",
+            "created",
+            "modified",
+            "backup",
+            "modnum",
+            "appInfoId",
+            "sortInfoID",
+            "type",
+            "creator",
+            "uniqueIDseed",
+            "nextRecordListID",
+            "number of records"
+        ]
 
-    # increment offset into file
-    self.offset += headerlen
+        # unpack header, zip up into list of tuples
+        results = zip(fields, unpack(headerfmt, self.contents[self.offset:self.offset+headerlen]))
 
-    # convert tuple array to dictionary
-    resultsDict = utils.toDict(results)
+        # increment offset into file
+        self.offset += headerlen
 
-    return resultsDict
+        # convert tuple array to dictionary
+        resultsDict = utils.toDict(results)
 
-  def readRecord0(self):
-    palmdocHeader = self.parsePalmDOCHeader()
-    MobiHeader = self.parseMobiHeader()
-    exthHeader = None
-    if MobiHeader['Has EXTH Header']:
-      exthHeader = self.parseEXTHHeader()
+        return resultsDict
 
-    self.config = {
-      'palmdoc': palmdocHeader,
-      'mobi' : MobiHeader,
-      'exth' : exthHeader
-    }
+    def readRecord0(self):
+        palmdocHeader = self.parsePalmDOCHeader()
+        MobiHeader = self.parseMobiHeader()
+        exthHeader = None
+        if MobiHeader['Has EXTH Header']:
+            exthHeader = self.parseEXTHHeader()
 
-  def parseEXTHHeader(self):
-    headerfmt = '>III'
-    headerlen = calcsize(headerfmt)
+        self.config = {
+            'palmdoc': palmdocHeader,
+            'mobi' : MobiHeader,
+            'exth' : exthHeader
+        }
 
-    fields = [
-      'identifier',
-      'header length',
-      'record Count'
-    ]
+    def parseEXTHHeader(self):
+        headerfmt = '>III'
+        headerlen = calcsize(headerfmt)
 
-    # unpack header, zip up into list of tuples
-    results = zip(fields, unpack(headerfmt, self.contents[self.offset:self.offset+headerlen]))
+        fields = [
+            'identifier',
+            'header length',
+            'record Count'
+        ]
 
-    # convert tuple array to dictionary
-    resultsDict = utils.toDict(results)
+        # unpack header, zip up into list of tuples
+        results = zip(fields, unpack(headerfmt, self.contents[self.offset:self.offset+headerlen]))
 
-    self.offset += headerlen
-    resultsDict['records'] = {}
-    for record in range(resultsDict['record Count']):
-      recordType, recordLen = unpack(">II", self.contents[self.offset:self.offset+8])
-      recordData = self.contents[self.offset+8:self.offset+recordLen]
-      resultsDict['records'][recordType] = recordData
-      self.offset += recordLen
+        # convert tuple array to dictionary
+        resultsDict = utils.toDict(results)
 
-    return resultsDict
+        self.offset += headerlen
+        resultsDict['records'] = {}
+        for record in range(resultsDict['record Count']):
+            recordType, recordLen = unpack(">II", self.contents[self.offset:self.offset+8])
+            recordData = self.contents[self.offset+8:self.offset+recordLen]
+            resultsDict['records'][recordType] = recordData
+            self.offset += recordLen
 
-  def parseMobiHeader(self):
-    headerfmt = '> IIII II 40s III IIIII IIII I 36s IIII 8s HHIIIII'
-    headerlen = calcsize(headerfmt)
+        return resultsDict
 
-    fields = [
-      "identifier",
-      "header length",
-      "Mobi type",
-      "text Encoding",
+    def parseMobiHeader(self):
+        headerfmt = '> IIII II 40s III IIIII IIII I 36s IIII 8s HHIIIII'
+        headerlen = calcsize(headerfmt)
 
-      "Unique-ID",
-      "Generator version",
+        fields = [
+            "identifier",
+            "header length",
+            "Mobi type",
+            "text Encoding",
 
-      "-Reserved",
+            "Unique-ID",
+            "Generator version",
 
-      "First Non-book index",
-      "Full Name Offset",
-      "Full Name Length",
+            "-Reserved",
 
-      "Language",
-      "Input Language",
-      "Output Language",
-      "Format version",
-      "First Image index",
+            "First Non-book index",
+            "Full Name Offset",
+            "Full Name Length",
 
-      "First Huff Record",
-      "Huff Record Count",
-      "First DATP Record",
-      "DATP Record Count",
+            "Language",
+            "Input Language",
+            "Output Language",
+            "Format version",
+            "First Image index",
 
-      "EXTH flags",
+            "First Huff Record",
+            "Huff Record Count",
+            "First DATP Record",
+            "DATP Record Count",
 
-      "-36 unknown bytes, if Mobi is long enough",
+            "EXTH flags",
 
-      "DRM Offset",
-      "DRM Count",
-      "DRM Size",
-      "DRM Flags",
+            "-36 unknown bytes, if Mobi is long enough",
 
-      "-Usually Zeros, unknown 8 bytes",
+            "DRM Offset",
+            "DRM Count",
+            "DRM Size",
+            "DRM Flags",
 
-      "-Unknown",
-      "Last Image Record",
-      "-Unknown",
-      "FCIS record",
-      "-Unknown",
-      "FLIS record",
-      "Unknown"
-    ]
+            "-Usually Zeros, unknown 8 bytes",
 
-    # unpack header, zip up into list of tuples
-    results = zip(fields, unpack(headerfmt, self.contents[self.offset:self.offset+headerlen]))
+            "-Unknown",
+            "Last Image Record",
+            "-Unknown",
+            "FCIS record",
+            "-Unknown",
+            "FLIS record",
+            "Unknown"
+        ]
 
-    # convert tuple array to dictionary
-    resultsDict = utils.toDict(results)
+        # unpack header, zip up into list of tuples
+        results = zip(fields,
+                      unpack(headerfmt,
+                             self.contents[self.offset:self.offset + headerlen]))
 
-    resultsDict['Start Offset'] = self.offset
+        # convert tuple array to dictionary
+        resultsDict = utils.toDict(results)
 
-    resultsDict['Full Name'] = (self.contents[
-      self.records[0]['record Data Offset'] + resultsDict['Full Name Offset'] :
-      self.records[0]['record Data Offset'] + resultsDict['Full Name Offset'] + resultsDict['Full Name Length']])
+        resultsDict['Start Offset'] = self.offset
 
-    resultsDict['Has DRM'] = resultsDict['DRM Offset'] != 0xFFFFFFFF
+        resultsDict['Full Name'] = (self.contents[
+          self.records[0]['record Data Offset'] + resultsDict['Full Name Offset']:
+          self.records[0]['record Data Offset'] + resultsDict['Full Name Offset'] +
+          resultsDict['Full Name Length']])
 
-    resultsDict['Has EXTH Header'] = (resultsDict['EXTH flags'] & 0x40) != 0
+        resultsDict['Has DRM'] = resultsDict['DRM Offset'] != 0xFFFFFFFF
 
-    self.offset += resultsDict['header length']
+        resultsDict['Has EXTH Header'] = (resultsDict['EXTH flags'] & 0x40) != 0
 
-    def onebits(x, width=16):
-        return len(filter(lambda x: x == "1", (str((x>>i)&1) for i in range(width-1,-1,-1))))
+        self.offset += resultsDict['header length']
 
-    resultsDict['extra bytes'] = 2*onebits(unpack(">H", self.contents[self.offset-2:self.offset])[0] & 0xFFFE)
+        def onebits(x, width=16):
+            return len(filter(lambda x: x == "1",
+                              (str((x >> i) & 1)
+                               for i in range(width - 1, -1, -1))))
 
-    return resultsDict
+        resultsDict['extra bytes'] = \
+            2 * onebits(unpack(">H", self.contents[self.offset-2:self.offset])[0]
+                        & 0xFFFE)
 
-  def parsePalmDOCHeader(self):
-    headerfmt = '>HHIHHHH'
-    headerlen = calcsize(headerfmt)
-    fields = [
-      "Compression",
-      "Unused",
-      "text length",
-      "record count",
-      "record size",
-      "Encryption Type",
-      "Unknown"
-    ]
-    offset = self.records[0]['record Data Offset']
-    # create tuple with info
-    results = zip(fields, unpack(headerfmt, self.contents[offset:offset+headerlen]))
+        return resultsDict
 
-    # convert tuple array to dictionary
-    resultsDict = utils.toDict(results)
+    def parsePalmDOCHeader(self):
+        headerfmt = '>HHIHHHH'
+        headerlen = calcsize(headerfmt)
+        fields = [
+            "Compression",
+            "Unused",
+            "text length",
+            "record count",
+            "record size",
+            "Encryption Type",
+            "Unknown"
+        ]
+        offset = self.records[0]['record Data Offset']
+        # create tuple with info
+        results = zip(fields,
+                      unpack(headerfmt,
+                             self.contents[offset:offset + headerlen]))
 
-    self.offset = offset+headerlen
-    return resultsDict
+        # convert tuple array to dictionary
+        resultsDict = utils.toDict(results)
+
+        self.offset = offset+headerlen
+        return resultsDict

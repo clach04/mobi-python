@@ -9,17 +9,17 @@ class MobiTests(unittest.TestCase):
     def setUp(self):
         self.mobitest = Mobi("test/CharlesDarwin.mobi")
 
-    def testParse(self):
+    def test_parse(self):
         self.mobitest.parse()
         pprint(self.mobitest.config)
 
-    def testRead(self):
+    def test_read(self):
         self.mobitest.parse()
         content = ""
         for i in range(1, 5):
             content += self.mobitest.readRecord(i)
 
-    def testImage(self):
+    def test_image(self):
         self.mobitest.parse()
         pprint(self.mobitest.records)
         for record in range(4):
@@ -27,7 +27,7 @@ class MobiTests(unittest.TestCase):
             f.write(self.mobitest.readImageRecord(record))
             f.close()
 
-    def testAuthorTitle(self):
+    def test_author_title(self):
         self.mobitest.parse()
         self.assertEqual(self.mobitest.author(), 'Charles Darwin')
         self.assertEqual(

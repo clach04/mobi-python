@@ -2,6 +2,7 @@ import struct
 # ported directly from the PalmDoc Perl library
 # http://kobesearch.cpan.org/htdocs/EBook-Tools/EBook/Tools/PalmDoc.pm.html
 
+
 def uncompress_lz77(data):
     length = len(data)
     offset = 0     # Current offset into data
@@ -49,7 +50,8 @@ def uncompress_lz77(data):
 
             offset += 1
             if (offset > len(data)):
-                print("WARNING: offset to LZ77 bits is outside of the data: %d" % offset);
+                print("WARNING: offset to LZ77 bits is outside of the data: %d"
+                      % offset)
                 return text
 
             lz77, = struct.unpack('>H', data[offset-2:offset])
@@ -63,7 +65,7 @@ def uncompress_lz77(data):
             # Remaining 11 bits are offset
             lz77offset = lz77 >> 3
             if (lz77offset < 1):
-                print("WARNING: LZ77 decompression offset is invalid!");
+                print("WARNING: LZ77 decompression offset is invalid!")
                 return text
 
             # Getting text from the offset is a little tricky, because

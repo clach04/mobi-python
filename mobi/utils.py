@@ -7,8 +7,10 @@ Created by Elliot Kroo on 2009-12-25.
 Copyright (c) 2009 Elliot Kroo. All rights reserved.
 """
 
+
 class LazyContents:
     """ read contents without loading the whole file in memory """
+
     def __init__(self, file):
         self.f = file
 
