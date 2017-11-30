@@ -43,6 +43,21 @@ REC_ATTR = 'Record Attributes'
 DRM_OFFSET = 'DRM Offset'
 DRM_OFFSET_MAX = 0xFFFFFFFF
 
+NAME = 'Name'
+ATTRS = 'Attributes'
+VERSION = 'Version'
+CREATED = 'Created'
+MODIFIED = 'Modified'
+BACKUP = 'Backup'
+MODNUM = 'ModNum'
+APP_INFO_ID = 'App Info ID'
+SORT_INFO_ID = 'Sort Info ID'
+TYPE = 'Type'
+CREATOR = 'Creator'
+UNIQUE_ID_SEED = 'Unique ID Seed'
+NEXT_RECORD_LIST_ID = 'nextRecordListID'
+
+
 UNKNOWN = 'Unknown'
 UNUSED = 'Unused'
 
@@ -173,19 +188,19 @@ class Mobi(object):
         hfmt = '>32shhIIIIII4s4sIIH'
         hlen = calcsize(hfmt)
         fields = [
-            "name",
-            "attributes",
-            "version",
-            "created",
-            "modified",
-            "backup",
-            "modnum",
-            "appInfoId",
-            "sortInfoID",
-            "type",
-            "creator",
-            "uniqueIDseed",
-            "nextRecordListID",
+            NAME,
+            ATTRS,
+            VERSION,
+            CREATED,
+            MODIFIED,
+            BACKUP,
+            MODNUM,
+            APP_INFO_ID,
+            SORT_INFO_ID,
+            TYPE,
+            CREATOR,
+            UNIQUE_ID_SEED,
+            NEXT_RECORD_LIST_ID,
             REC_COUNT
         ]
 
