@@ -57,6 +57,9 @@ CREATOR = 'Creator'
 UNIQUE_ID_SEED = 'Unique ID Seed'
 NEXT_RECORD_LIST_ID = 'nextRecordListID'
 
+ID = 'ID'
+HEADER_LEN = 'Header Length'
+
 
 UNKNOWN = 'Unknown'
 UNUSED = 'Unused'
@@ -95,12 +98,12 @@ class Mobi(object):
         self.offset = 0
         self.parse()
 
-    def close(self):
-        if self.f is None:
+    def __iter__(self):
+        if not self.config:
             return
 
-        self.f.close()
-        self.f = None
+        for record in range(1, self.config[MOBI][NONBOOK0] - 1):
+            yield self.read_record(record)
 
     def __enter__(self):
         return self
@@ -117,8 +120,8 @@ class Mobi(object):
 
     def read_record(self, recordnum, disable_compression=False):
         if self.config:
-            roff = self.records[recordnum][REC_DATA_OFF]  # Record offset
-            noff = self.records[recordnum+1][REC_DATA_OFF]  # Next offset
+            roff = self.records[recordnum][REC_DATA_OFF]    # Record offset
+            noff = self.records[recordnum + 1][REC_DATA_OFF]  # Next offset
 
             if self.config[PALMDOC][COMPRESSION] == 1 or disable_compression:
                 return self.contents[roff:noff]
@@ -146,14 +149,14 @@ class Mobi(object):
         "Returns the title of the book"
         return self.config[MOBI][FULLNAME].decode('utf8')
 
-# ##########  Private API ###########################
-
-    def __iter__(self):
-        if not self.config:
+    def close(self):
+        if self.f is None:
             return
 
-        for record in range(1, self.config[MOBI][NONBOOK0] - 1):
-            yield self.readRecord(record)
+        self.f.close()
+        self.f = None
+
+# ##########  Private API ###########################
 
     def parse_record_info_list(self):
         records = {}
@@ -228,8 +231,8 @@ class Mobi(object):
         hfmt = '>III'
         hlen = calcsize(hfmt)
         fields = [
-            'identifier',
-            'header length',
+            ID,
+            HEADER_LEN,
             REC_COUNT,
         ]
 
@@ -253,8 +256,8 @@ class Mobi(object):
         hfmt = '> IIII II 40s III IIIII IIII I 36s IIII 8s HHIIIII'
         hlen = calcsize(hfmt)
         fields = [
-            "identifier",
-            "header length",
+            ID,
+            HEADER_LEN,
             "Mobi type",
             "text Encoding",
 
@@ -309,7 +312,7 @@ class Mobi(object):
             self.contents[offset:offset + results[FULLNAME_LEN]]
 
         self.has_drm = results[DRM_OFFSET] != DRM_OFFSET_MAX
-        self.offset += results['header length']
+        self.offset += results[HEADER_LEN]
 
         def onebits(x, width=16):
             return len(list(filter(lambda x: x == "1",
