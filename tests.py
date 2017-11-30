@@ -28,9 +28,9 @@ class MobiTests(unittest.TestCase):
 
     def test_author_title(self):
         self.mobitest.parse()
-        self.assertEqual('Charles Darwin', self.mobitest.author())
+        self.assertEqual('Charles Darwin', self.mobitest.author)
         self.assertEqual(
-            self.mobitest.title(),
+            self.mobitest.title,
             'The Origin of Species by means of Natural Selection, 6th Edition')
 
 

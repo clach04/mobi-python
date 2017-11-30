@@ -16,6 +16,24 @@ from .lz77 import uncompress_lz77
 from . import utils
 
 
+REC_DATA_OFF = 'Record Data Offset'
+UNIQUE_ID = 'Unique ID'
+
+PALMDOC = 'Palmdoc'
+MOBI = 'Mobi'
+EXTH = 'EXTH'
+
+RECORDS = 'Records'
+EXTRA_BYTES = 'Extra Bytes'
+COMPRESSION = 'Compression'
+IMAGE0 = 'First Image Index'
+NONBOOK0 = 'First Non-Book Index'
+FULLNAME = 'Full Name'
+EXTH_FLAGS = 'EXTH Flags'
+
+FLAG_HAS_EXTH = 0x40
+
+
 class Mobi:
     def parse(self):
         """ reads in the file, then parses record tables"""
@@ -24,26 +42,36 @@ class Mobi:
         self.records = self.parseRecordInfoList()
         self.readRecord0()
 
-    def readRecord(self, recordnum, disable_compression=False):
+    def read_record(self, recordnum, disable_compression=False):
         if self.config:
-            if self.config['palmdoc']['Compression'] == 1 or disable_compression:
-                return self.contents[self.records[recordnum]['record Data Offset']:self.records[recordnum+1]['record Data Offset']]
-            elif self.config['palmdoc']['Compression'] == 2:
-                result = uncompress_lz77(self.contents[self.records[recordnum]['record Data Offset']:self.records[recordnum+1]['record Data Offset']-self.config['mobi']['extra bytes']])
-                return result
+            roff = self.records[recordnum][REC_DATA_OFF]  # Record offset
+            noff = self.records[recordnum+1][REC_DATA_OFF]  # Next offset
 
-    def readImageRecord(self, imgnum):
+            if self.config[PALMDOC][COMPRESSION] == 1 or disable_compression:
+                return self.contents[roff:noff]
+
+            elif self.config[PALMDOC][COMPRESSION] == 2:
+                xbytes = self.config[MOBI][EXTRA_BYTES]
+                return uncompress_lz77(self.contents[roff:noff - xbytes])
+
+    readRecord = read_record
+
+    def read_image_record(self, imgnum):
         if self.config:
-            recordnum = self.config['mobi']['First Image index'] + imgnum
-            return self.readRecord(recordnum, disable_compression=True)
+            rnum = self.config[MOBI][IMAGE0] + imgnum
+            return self.readRecord(rnum, disable_compression=True)
 
+    readImageRecord = read_image_record
+
+    @property
     def author(self):
         "Returns the author of the book"
-        return self.config['exth']['records'][100].decode('utf8')
+        return self.config[EXTH][RECORDS][100].decode('utf8')
 
+    @property
     def title(self):
         "Returns the title of the book"
-        return self.config['mobi']['Full Name'].decode('utf8')
+        return self.config[MOBI][FULLNAME].decode('utf8')
 
 # ##########  Private API ###########################
 
@@ -62,7 +90,7 @@ class Mobi:
         if not self.config:
             return
 
-        for record in range(1, self.config['mobi']['First Non-book index'] - 1):
+        for record in range(1, self.config[MOBI][NONBOOK0] - 1):
             yield self.readRecord(record)
 
     def parseRecordInfoList(self):
@@ -72,8 +100,8 @@ class Mobi:
             headerfmt = '>II'
             headerlen = calcsize(headerfmt)
             fields = [
-                "record Data Offset",
-                "UniqueID",
+                REC_DATA_OFF,
+                UNIQUE_ID,
             ]
             # create tuple with info
             results = zip(fields, unpack(headerfmt, self.contents[self.offset:self.offset+headerlen]))
@@ -86,11 +114,11 @@ class Mobi:
 
             # futz around with the unique ID record, as the uniqueID's top 8 bytes are
             # really the "record attributes":
-            resultsDict['record Attributes'] = (resultsDict['UniqueID'] & 0xFF000000) >> 24
-            resultsDict['UniqueID'] = resultsDict['UniqueID'] & 0x00FFFFFF
+            resultsDict['record Attributes'] = (resultsDict[UNIQUE_ID] & 0xFF000000) >> 24
+            resultsDict[UNIQUE_ID] = resultsDict[UNIQUE_ID] & 0x00FFFFFF
 
             # store into the records dict
-            records[resultsDict['UniqueID']] = resultsDict
+            records[resultsDict[UNIQUE_ID]] = resultsDict
 
         return records
 
@@ -126,17 +154,14 @@ class Mobi:
         return resultsDict
 
     def readRecord0(self):
-        palmdocHeader = self.parsePalmDOCHeader()
-        MobiHeader = self.parseMobiHeader()
-        exthHeader = None
-        if MobiHeader['Has EXTH Header']:
-            exthHeader = self.parseEXTHHeader()
-
         self.config = {
-            'palmdoc': palmdocHeader,
-            'mobi': MobiHeader,
-            'exth': exthHeader
+            PALMDOC: self.parsePalmDOCHeader(),
         }
+        mobi = self.config[MOBI] = self.parseMobiHeader()
+        if mobi[EXTH_FLAGS] & FLAG_HAS_EXTH != 0:
+            self.config[EXTH] = self.parseEXTHHeader()
+        else:
+            self.config[EXTH] = None
 
     def parseEXTHHeader(self):
         headerfmt = '>III'
@@ -155,11 +180,11 @@ class Mobi:
         resultsDict = utils.toDict(results)
 
         self.offset += headerlen
-        resultsDict['records'] = {}
+        resultsDict[RECORDS] = {}
         for record in range(resultsDict['record Count']):
             recordType, recordLen = unpack(">II", self.contents[self.offset:self.offset+8])
             recordData = self.contents[self.offset+8:self.offset+recordLen]
-            resultsDict['records'][recordType] = recordData
+            resultsDict[RECORDS][recordType] = recordData
             self.offset += recordLen
 
         return resultsDict
@@ -179,7 +204,7 @@ class Mobi:
 
             "-Reserved",
 
-            "First Non-book index",
+            NONBOOK0,
             "Full Name Offset",
             "Full Name Length",
 
@@ -187,14 +212,14 @@ class Mobi:
             "Input Language",
             "Output Language",
             "Format version",
-            "First Image index",
+            IMAGE0,
 
             "First Huff Record",
             "Huff Record Count",
             "First DATP Record",
             "DATP Record Count",
 
-            "EXTH flags",
+            EXTH_FLAGS,
 
             "-36 unknown bytes, if Mobi is long enough",
 
@@ -224,14 +249,12 @@ class Mobi:
 
         resultsDict['Start Offset'] = self.offset
 
-        resultsDict['Full Name'] = (self.contents[
-          self.records[0]['record Data Offset'] + resultsDict['Full Name Offset']:
-          self.records[0]['record Data Offset'] + resultsDict['Full Name Offset'] +
+        resultsDict[FULLNAME] = (self.contents[
+          self.records[0][REC_DATA_OFF] + resultsDict['Full Name Offset']:
+          self.records[0][REC_DATA_OFF] + resultsDict['Full Name Offset'] +
           resultsDict['Full Name Length']])
 
         resultsDict['Has DRM'] = resultsDict['DRM Offset'] != 0xFFFFFFFF
-
-        resultsDict['Has EXTH Header'] = (resultsDict['EXTH flags'] & 0x40) != 0
 
         self.offset += resultsDict['header length']
 
@@ -240,7 +263,7 @@ class Mobi:
                                    (str((x >> i) & 1)
                                     for i in range(width - 1, -1, -1)))))
 
-        resultsDict['extra bytes'] = \
+        resultsDict[EXTRA_BYTES] = \
             2 * onebits(unpack(">H", self.contents[self.offset-2:self.offset])[0]
                         & 0xFFFE)
 
@@ -250,7 +273,7 @@ class Mobi:
         headerfmt = '>HHIHHHH'
         headerlen = calcsize(headerfmt)
         fields = [
-            "Compression",
+            COMPRESSION,
             "Unused",
             "text length",
             "record count",
@@ -258,7 +281,7 @@ class Mobi:
             "Encryption Type",
             "Unknown"
         ]
-        offset = self.records[0]['record Data Offset']
+        offset = self.records[0][REC_DATA_OFF]
         # create tuple with info
         results = zip(fields,
                       unpack(headerfmt,
