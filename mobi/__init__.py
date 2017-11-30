@@ -96,9 +96,9 @@ class Mobi(object):
     def parse(self):
         """ reads in the file, then parses record tables"""
         self.contents = LazyContents(self.f)
-        self.header = self.parseHeader()
-        self.records = self.parseRecordInfoList()
-        self.config = self.readRecord0()
+        self.header = self.parse_header()
+        self.records = self.parse_record_info_list()
+        self.config = self.read_record0()
 
     def read_record(self, recordnum, disable_compression=False):
         if self.config:
@@ -140,7 +140,7 @@ class Mobi(object):
         for record in range(1, self.config[MOBI][NONBOOK0] - 1):
             yield self.readRecord(record)
 
-    def parseRecordInfoList(self):
+    def parse_record_info_list(self):
         records = {}
         hfmt = '>II'
         hlen = calcsize(hfmt)
@@ -169,7 +169,7 @@ class Mobi(object):
 
         return records
 
-    def parseHeader(self):
+    def parse_header(self):
         hfmt = '>32shhIIIIII4s4sIIH'
         hlen = calcsize(hfmt)
         fields = [
@@ -198,18 +198,18 @@ class Mobi(object):
 
         return results
 
-    def readRecord0(self):
+    def read_record0(self):
         config = {
-            PALMDOC: self.parsePalmDOCHeader(),
+            PALMDOC: self.parse_palmdoc_header(),
         }
-        mobi = config[MOBI] = self.parseMobiHeader()
+        mobi = config[MOBI] = self.parse_mobi_header()
         if mobi[EXTH_FLAGS] & FLAG_HAS_EXTH != 0:
-            config[EXTH] = self.parseEXTHHeader()
+            config[EXTH] = self.parse_exth_header()
         else:
             config[EXTH] = None
         return config
 
-    def parseEXTHHeader(self):
+    def parse_exth_header(self):
         hfmt = '>III'
         hlen = calcsize(hfmt)
         fields = [
@@ -234,7 +234,7 @@ class Mobi(object):
 
         return results
 
-    def parseMobiHeader(self):
+    def parse_mobi_header(self):
         hfmt = '> IIII II 40s III IIIII IIII I 36s IIII 8s HHIIIII'
         hlen = calcsize(hfmt)
         fields = [
@@ -307,7 +307,7 @@ class Mobi(object):
 
         return results
 
-    def parsePalmDOCHeader(self):
+    def parse_palmdoc_header(self):
         hfmt = '>HHIHHHH'
         hlen = calcsize(hfmt)
         fields = [
