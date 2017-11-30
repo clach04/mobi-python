@@ -1,4 +1,5 @@
 import unittest
+import tempfile
 
 from pprint import pprint
 
@@ -20,7 +21,7 @@ class MobiTests(unittest.TestCase):
     def test_image(self):
         pprint(self.mobitest.records)
         for record in range(4):
-            with open("imagerecord%d.jpg" % record, 'wb') as f:
+            with tempfile.TemporaryFile() as f:
                 f.write(self.mobitest.readImageRecord(record))
 
     def test_author_title(self):
