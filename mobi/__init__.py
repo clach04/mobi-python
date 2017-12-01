@@ -9,7 +9,6 @@ Copyright (c) 2009 Elliot Kroo. All rights reserved.
 
 from __future__ import absolute_import
 
-import sys
 import logging
 
 from struct import calcsize, unpack
@@ -320,7 +319,8 @@ class Mobi(object):
                                     for i in range(width - 1, -1, -1)))))
 
         results[EXTRA_BYTES] = \
-            2 * onebits(unpack(">H", self.contents[self.offset-2:self.offset])[0]
+            2 * onebits(unpack(">H",
+                        self.contents[self.offset - 2:self.offset])[0]
                         & 0xFFFE)
 
         return results
